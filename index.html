@@ -3,413 +3,925 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER LAB // 课堂作业</title>
+    <title>校园南北门客流预测疏导平台 | 高德地图可视化版</title>
+    <!-- 图表依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Excel导出 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- 高德地图JS API 填入你的KEY -->
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=3dac70794ebf507be7ed6c29ff0272aa"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap');
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        :root {
-            --neon-pink: #ff00ff;
-            --neon-cyan: #00ffff;
-            --neon-yellow: #ffff00;
-            --dark-bg: #0a0a0f;
-            --panel-bg: rgba(10, 10, 20, 0.85);
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei",sans-serif;
         }
-        
-        body {
-            background: var(--dark-bg);
-            color: #fff;
-            font-family: 'Noto Sans SC', sans-serif;
-            overflow-x: hidden;
-            min-height: 100vh;
+        body{
+            background-color: #f3f6fa;
+            padding: 20px;
         }
-        
-        /* 扫描线效果 */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                rgba(0, 0, 0, 0.15),
-                rgba(0, 0, 0, 0.15) 1px,
-                transparent 1px,
-                transparent 2px
-            );
-            pointer-events: none;
-            z-index: 9999;
-        }
-        
-        /* 背景网格 */
-        .grid-bg {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: 
-                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        /* 故障文字动画 */
-        .glitch {
-            font-family: 'Orbitron', monospace;
-            font-size: 4rem;
-            font-weight: 900;
-            color: #fff;
-            position: relative;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-            animation: glitch-skew 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
-        }
-        
-        .glitch::before,
-        .glitch::after {
-            content: attr(data-text);
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-        }
-        
-        .glitch::before {
-            left: 2px;
-            text-shadow: -2px 0 var(--neon-pink);
-            clip: rect(44px, 450px, 56px, 0);
-            animation: glitch-anim 5s infinite linear alternate-reverse;
-        }
-        
-        .glitch::after {
-            left: -2px;
-            text-shadow: -2px 0 var(--neon-cyan);
-            clip: rect(44px, 450px, 56px, 0);
-            animation: glitch-anim2 5s infinite linear alternate-reverse;
-        }
-        
-        @keyframes glitch-anim {
-            0% { clip: rect(31px, 9999px, 94px, 0); }
-            20% { clip: rect(78px, 9999px, 20px, 0); }
-            40% { clip: rect(12px, 9999px, 6px, 0); }
-            60% { clip: rect(65px, 9999px, 89px, 0); }
-            80% { clip: rect(23px, 9999px, 67px, 0); }
-            100% { clip: rect(54px, 9999px, 12px, 0); }
-        }
-        
-        @keyframes glitch-anim2 {
-            0% { clip: rect(65px, 9999px, 99px, 0); }
-            20% { clip: rect(12px, 9999px, 54px, 0); }
-            40% { clip: rect(89px, 9999px, 23px, 0); }
-            60% { clip: rect(34px, 9999px, 12px, 0); }
-            80% { clip: rect(67px, 9999px, 78px, 0); }
-            100% { clip: rect(3px, 9999px, 65px, 0); }
-        }
-        
-        @keyframes glitch-skew {
-            0% { transform: skew(0deg); }
-            10% { transform: skew(-2deg); }
-            20% { transform: skew(2deg); }
-            30% { transform: skew(0deg); }
-            100% { transform: skew(0deg); }
-        }
-        
-        /* 容器 */
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 60px 20px;
-        }
-        
-        /* 头部 */
-        header {
+        /* 导航栏 */
+        .nav-bar{
+            background-color: #2357d4;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 20px;
             text-align: center;
-            margin-bottom: 60px;
-            padding-top: 40px;
+            box-shadow: 0 2px 8px rgba(35,87,212,0.2);
         }
-        
-        .subtitle {
-            color: var(--neon-cyan);
-            font-family: 'Orbitron', monospace;
-            font-size: 1rem;
-            margin-top: 20px;
-            letter-spacing: 8px;
-            opacity: 0.8;
-        }
-        
-        .blink {
-            animation: blink 1s step-end infinite;
-        }
-        
-        @keyframes blink { 50% { opacity: 0; } }
-        
-        /* 霓虹卡片 */
-        .neon-card {
-            background: var(--panel-bg);
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 30px;
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
+        .nav-bar a{
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            margin: 0 18px;
+            cursor: pointer;
             transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            padding: 6px 10px;
+            border-radius: 4px;
         }
-        
-        .neon-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-pink), transparent);
-            opacity: 0.5;
+        .nav-bar a:hover{
+            background: rgba(255,255,255,0.15);
         }
-        
-        .neon-card:hover {
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2), inset 0 0 30px rgba(0, 255, 255, 0.05);
-            transform: translateY(-5px);
-        }
-        
-        .card-title {
-            font-family: 'Orbitron', monospace;
-            color: var(--neon-yellow);
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .card-content {
-            color: #b0b0b0;
-            line-height: 1.8;
-            font-size: 1rem;
-        }
-        
-        .highlight {
-            color: var(--neon-cyan);
+        .nav-bar a.active{
             font-weight: bold;
+            background: rgba(255,255,255,0.2);
+            border-bottom: 2px solid #fff;
         }
-        
-        /* 技能条 - 赛博风格 */
-        .cyber-skill {
-            margin: 20px 0;
+
+        /* 整体容器 */
+        .main-container{
+            max-width: 1300px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         }
-        
-        .cyber-skill-header {
+        /* 顶部时间公告栏 */
+        .top-wrap{
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-family: 'Orbitron', monospace;
-            font-size: 0.9rem;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            flex-wrap: wrap;
+            gap:10px;
         }
-        
-        .cyber-bar {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-            position: relative;
+        .top-time{
+            font-size: 17px;
+            color: #333;
         }
-        
-        .cyber-bar-fill {
-            height: 100%;
-            border-radius: 4px;
-            position: relative;
-            width: 0;
-            transition: width 2s ease;
+        .notice-bar{
+            color:#c62828;
+            font-weight:500;
         }
-        
-        .cyber-bar-fill::after {
-            content: '';
-            position: absolute;
-            top: 0; right: 0; bottom: 0; width: 20px;
-            background: rgba(255, 255, 255, 0.3);
-            filter: blur(4px);
-        }
-        
-        .cyan-fill { background: linear-gradient(90deg, transparent, var(--neon-cyan)); }
-        .pink-fill { background: linear-gradient(90deg, transparent, var(--neon-pink)); }
-        .yellow-fill { background: linear-gradient(90deg, transparent, var(--neon-yellow)); }
-        
-        /* 终端窗口 */
-        .terminal {
-            background: #050508;
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 20px;
-            font-family: 'Courier New', monospace;
-            margin-top: 20px;
-        }
-        
-        .terminal-header {
+        /* 地图布局 */
+        .map-row{
             display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap:20px;
+            margin-bottom:25px;
+            flex-wrap: wrap;
         }
-        
-        .dot { width: 12px; height: 12px; border-radius: 50%; }
-        .dot-red { background: #ff5f56; }
-        .dot-yellow { background: #ffbd2e; }
-        .dot-green { background: #27c93f; }
-        
-        .terminal-body {
-            color: #00ff00;
-            line-height: 1.6;
-            font-size: 0.9rem;
+        #container{
+            width: 70%;
+            height: 420px;
+            border-radius:10px;
+            border:1px solid #e2e8f0;
         }
-        
-        .terminal-line {
-            margin: 5px 0;
-            opacity: 0;
-            animation: typeIn 0.5s forwards;
+        .map-info-panel{
+            flex:1;
+            min-width:280px;
+            padding:20px;
+            background:#f8fafc;
+            border-radius:10px;
+            border:1px solid #e2e8f0;
         }
-        
-        .terminal-line:nth-child(1) { animation-delay: 0.5s; }
-        .terminal-line:nth-child(2) { animation-delay: 1s; }
-        .terminal-line:nth-child(3) { animation-delay: 1.5s; }
-        .terminal-line:nth-child(4) { animation-delay: 2s; }
-        .terminal-line:nth-child(5) { animation-delay: 2.5s; }
-        
-        @keyframes typeIn {
-            to { opacity: 1; }
+        .map-info-panel h4{
+            color:#2357d4;
+            margin-bottom:15px;
+            font-size:16px;
+            border-left:4px solid #2357d4;
+            padding-left:8px;
         }
-        
-        .prompt { color: var(--neon-cyan); }
-        .cmd { color: #fff; }
-        
-        /* 页脚 */
-        footer {
+        .info-item{
+            display:flex;
+            justify-content:space-between;
+            padding:8px 0;
+            border-bottom:1px dashed #ddd;
+        }
+        .map-btn-group{
+            margin-top:15px;
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+        }
+        .map-btn{
+            padding:6px 12px;
+            background:#2357d4;
+            color:#fff;
+            border:none;
+            border-radius:4px;
+            cursor:pointer;
+            font-size:14px;
+        }
+        /* 9天日期切换：前1天+当天+后7天 */
+        .day-switch{
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 8px 0;
+            margin-bottom: 25px;
+        }
+        .day-item{
+            min-width: 85px;
+            padding: 10px;
             text-align: center;
-            margin-top: 60px;
-            padding: 30px;
-            color: rgba(255, 255, 255, 0.4);
-            font-family: 'Orbitron', monospace;
-            font-size: 0.8rem;
-            letter-spacing: 3px;
+            border: 1px solid #ccd6e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
         }
-        
-        /* 响应式 */
-        @media (max-width: 768px) {
-            .glitch { font-size: 2.5rem; }
-            .subtitle { font-size: 0.8rem; letter-spacing: 4px; }
+        .day-item:hover{
+            border-color:#2357d4;
         }
+        .day-item.active{
+            background-color: #2357d4;
+            color: #fff;
+            border-color: #2357d4;
+        }
+        /* 24小时时段卡片 */
+        .hour-box{
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 10px 0;
+            margin-bottom: 30px;
+            scroll-behavior: smooth;
+        }
+        .hour-card{
+            min-width: 120px;
+            padding: 16px 10px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            transition: transform 0.2s;
+            cursor:default;
+        }
+        .hour-card:hover{
+            transform: translateY(-3px);
+            box-shadow:0 4px 8px rgba(0,0,0,0.1);
+        }
+        .hour-card.curr-time{
+            border-color:#2357d4;
+            background:#eef4ff;
+        }
+        .hour-card.peak-time{
+            border-color:#c62828;
+            background:#fff0f0;
+        }
+        .hour-card h4{
+            font-size: 15px;
+            color: #222;
+            margin-bottom: 8px;
+        }
+        .flow-text{
+            font-size: 14px;
+            color: #444;
+            line-height: 1.6;
+        }
+        /* 拥堵状态 */
+        .congest-status{
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 18px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .smooth{ background:#e8f5e9; color:#2e7d32; }
+        .slow{ background:#fff8e1; color:#f57f17; }
+        .crowd{ background:#ffebee; color:#c62828; }
+
+        /* 出行建议 */
+        .advice-area{
+            padding: 20px;
+            background: #eff6ff;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .advice-area h3{
+            color: #1e40af;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .advice-content{
+            color: #333;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        /* 图表区域 */
+        .chart-title{
+            font-size: 16px;
+            color: #222;
+            margin-bottom: 15px;
+        }
+        .chart-tab{
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .tab-btn{
+            padding: 8px 18px;
+            border: 1px solid #2357d4;
+            border-radius: 6px;
+            background: #fff;
+            color: #2357d4;
+            cursor: pointer;
+            transition:0.2s;
+        }
+        .tab-btn.active{
+            background: #2357d4;
+            color: #fff;
+        }
+        .chart-wrap{
+            height: 350px;
+        }
+
+        /* 页面通用 */
+        .page{ display: none; }
+        .page.show{ display: block; }
+
+        /* 数据录入页样式 */
+        .form-box{ background:#fff; padding:25px; border-radius:12px; }
+        .form-item{ margin:15px 0; }
+        label{ display:block; margin-bottom:8px; font-weight:500; }
+        input,select{ width:280px; padding:10px; border:1px solid #ccc; border-radius:6px; }
+        button{ padding:10px 20px; border:none; border-radius:6px; cursor:pointer; margin-right:10px; }
+        .btn-sub{ background:#2357d4; color:#fff; }
+        .btn-del{ background:#f44336; color:#fff; }
+        .btn-export{ background:#4caf50; color:#fff; }
+        .btn-reset{background:#ff9800;color:#fff;}
+        .record-list{ margin-top:20px; border:1px solid #eee; }
+        .record-row{ display:flex; padding:12px; border-bottom:1px solid #eee; align-items:center; }
+        .record-row>div{ flex:1; }
+
+        /* 弹窗 */
+        .mask{
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:999;
+        }
+        .dialog{ background:#fff; padding:30px; border-radius:10px; width:400px; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
+        .dialog h3{ margin-bottom:20px; }
+        .dialog-btn{ margin-top:20px; text-align:right; }
+
+        /* 使用帮助 */
+        .help-content{ line-height:2; padding:25px; background:#fff; border-radius:12px; font-size:15px; }
+        .help-content h2{ color:#2357d4; margin-bottom:15px; text-align:center; }
+        .help-content h4{ margin:12px 0 6px; color:#222; }
     </style>
 </head>
 <body>
-    <div class="grid-bg"></div>
-    
-    <div class="container">
-        <header>
-            <h1 class="glitch" data-text="CYBER LAB">CYBER LAB</h1>
-            <p class="subtitle">课堂作业展示 v1.0<span class="blink">_</span></p>
-        </header>
-        
-        <div class="neon-card">
-            <div class="card-title">◈ 系统信息</div>
-            <div class="card-content">
-                <p>欢迎访问 <span class="highlight">本地部署实验室</span>。本站点通过内网穿透技术直接架设于个人设备，</p>
-                <p>无需租赁云服务器即可实现公网访问。当前系统状态：<span class="highlight">在线</span> | 延迟：<span class="highlight">12ms</span></p>
-            </div>
+
+<!-- 导航 -->
+<div class="nav-bar">
+    <a onclick="switchPage('home')" class="active">首页</a>
+    <a onclick="switchPage('query')">数据查询</a>
+    <a onclick="switchPage('help')">使用帮助</a>
+    <a onclick="openManagePwd()">网页管理</a>
+</div>
+
+<!-- 1. 首页 -->
+<div class="page show" id="home">
+    <div class="main-container">
+        <div class="top-wrap">
+            <div class="top-time" id="currentTime"></div>
+            <div class="notice-bar">校园通行公告：上下课高峰请错峰入校，注意有序通行</div>
         </div>
-        
-        <div class="neon-card">
-            <div class="card-title">◈ 技术栈扫描</div>
-            <div class="cyber-skill">
-                <div class="cyber-skill-header">
-                    <span style="color: var(--neon-cyan)">HTML5 / CSS3</span>
-                    <span style="color: var(--neon-cyan)">92%</span>
-                </div>
-                <div class="cyber-bar">
-                    <div class="cyber-bar-fill cyan-fill" data-width="92%"></div>
-                </div>
-            </div>
-            <div class="cyber-skill">
-                <div class="cyber-skill-header">
-                    <span style="color: var(--neon-pink)">JavaScript</span>
-                    <span style="color: var(--neon-pink)">78%</span>
-                </div>
-                <div class="cyber-bar">
-                    <div class="cyber-bar-fill pink-fill" data-width="78%"></div>
-                </div>
-            </div>
-            <div class="cyber-skill">
-                <div class="cyber-skill-header">
-                    <span style="color: var(--neon-yellow)">网络部署</span>
-                    <span style="color: var(--neon-yellow)">85%</span>
-                </div>
-                <div class="cyber-bar">
-                    <div class="cyber-bar-fill yellow-fill" data-width="85%"></div>
+
+        <!-- 高德地图可视化区域 -->
+        <div class="map-row">
+            <div id="container"></div>
+            <div class="map-info-panel">
+                <h4>校门实时客流监控</h4>
+                <div class="info-item"><span>北门实时人数</span><span id="mapNorthNum">0</span></div>
+                <div class="info-item"><span>南门实时人数</span><span id="mapSouthNum">0</span></div>
+                <div class="info-item"><span>今日客流峰值</span><span id="mapMaxFlow">0</span></div>
+                <div class="info-item"><span>整体通行状态</span><span id="mapStatus">检测中</span></div>
+                <div class="map-btn-group">
+                    <button class="map-btn" onclick="getCurrentPosition()">定位我的位置</button>
+                    <button class="map-btn" onclick="openRoutePlan()">规划最优路线</button>
+                    <button class="map-btn" onclick="toggleHeatMap()">切换人流热力</button>
                 </div>
             </div>
         </div>
-        
-        <div class="neon-card">
-            <div class="card-title">◈ 终端日志</div>
-            <div class="terminal">
-                <div class="terminal-header">
-                    <div class="dot dot-red"></div>
-                    <div class="dot dot-yellow"></div>
-                    <div class="dot dot-green"></div>
-                    <span style="margin-left: 10px; color: #666; font-size: 0.8rem;">bash — 80x24</span>
-                </div>
-                <div class="terminal-body">
-                    <div class="terminal-line"><span class="prompt">user@localhost:~$</span> <span class="cmd">python -m http.server 8080</span></div>
-                    <div class="terminal-line">Serving HTTP on 127.0.0.1 port 8080 ...</div>
-                    <div class="terminal-line"><span class="prompt">user@localhost:~$</span> <span class="cmd">./frpc -c frpc.ini</span></div>
-                    <div class="terminal-line">[INFO] Tunnel started successfully</div>
-                    <div class="terminal-line"><span class="prompt">user@localhost:~$</span> <span class="cmd">echo "网站已上线"</span></div>
-                </div>
-            </div>
+
+        <!-- 日期选择栏 -->
+        <div class="day-switch" id="dayContainer"></div>
+        <div class="congest-status" id="congestStatus">正在检测通行状态...</div>
+        <!-- 24小时时段卡片 -->
+        <div class="hour-box" id="hourCardBox"></div>
+        <div class="advice-area">
+            <h3>智能出行建议</h3>
+            <div class="advice-content" id="travelAdvice">加载客流数据中...</div>
         </div>
-        
-        <div class="neon-card">
-            <div class="card-title">◈ 项目档案</div>
-            <div class="card-content">
-                <p><span class="highlight">[PROJECT_001]</span> 赛博朋克风格个人主页 —— 纯 CSS 实现故障艺术、霓虹光效与扫描线</p>
-                <p><span class="highlight">[PROJECT_002]</span> 内网穿透部署实验 —— 基于 FRP 的本地服务公网映射</p>
-                <p><span class="highlight">[PROJECT_003]</span> 响应式布局测试 —— 适配桌面端与移动端视口</p>
-            </div>
+        <div class="chart-title">客流数据分析图表</div>
+        <div class="chart-tab">
+            <button class="tab-btn active" data-type="line">曲线图</button>
+            <button class="tab-btn" data-type="bar">柱状图</button>
+            <button class="tab-btn" data-type="pie">扇形图</button>
         </div>
-        
-        <footer>
-            SYSTEM STATUS: ONLINE // DEPLOYED VIA NAT FRPC
-        </footer>
+        <div class="chart-wrap">
+            <canvas id="flowChart"></canvas>
+        </div>
     </div>
+</div>
 
-    <script>
-        // 滚动触发技能条
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const fill = entry.target;
-                    fill.style.width = fill.getAttribute('data-width');
-                }
-            });
-        }, { threshold: 0.5 });
+<!-- 2. 数据录入页（管理页面） -->
+<div class="page" id="inputPage">
+    <div class="main-container">
+        <div class="form-box">
+            <h2>管理员客流数据录入与管理</h2>
+            <div class="form-item">
+                <label>选择统计日期</label>
+                <input type="date" id="collectDate">
+            </div>
+            <div class="form-item">
+                <label>起始时段</label>
+                <input type="time" id="startTime">
+            </div>
+            <div class="form-item">
+                <label>结束时段</label>
+                <input type="time" id="endTime">
+            </div>
+            <div class="form-item">
+                <label>南门人流量</label>
+                <input type="number" id="southNum" placeholder="输入人数">
+            </div>
+            <div class="form-item">
+                <label>北门人流量</label>
+                <input type="number" id="northNum" placeholder="输入人数">
+            </div>
+            <button class="btn-sub" onclick="submitData()">提交录入数据</button>
+            <button class="btn-reset" onclick="clearAllData()">一键清空所有数据</button>
+            <h3 style="margin:20px 0 10px">历史录入记录</h3>
+            <div class="record-list" id="recordList"></div>
+        </div>
+    </div>
+</div>
 
-        document.querySelectorAll('.cyber-bar-fill').forEach(bar => {
-            observer.observe(bar);
+<!-- 3. 数据查询页 -->
+<div class="page" id="query">
+    <div class="main-container">
+        <div class="form-box">
+            <div class="form-item">
+                <label>选择查询日期</label>
+                <input type="date" id="queryDate">
+                <button class="btn-sub" onclick="searchData()">查询客流数据</button>
+                <button class="btn-export" onclick="exportExcel()">导出Excel报表</button>
+            </div>
+            <div class="chart-wrap" style="margin-top:20px">
+                <canvas id="queryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. 使用帮助（纯用户视角） -->
+<div class="page" id="help">
+    <div class="main-container">
+        <div class="help-content">
+            <h2>校园出入口客流平台使用指南</h2>
+            <h4>一、平台简介</h4>
+            <p>本平台整合高德地理地图服务，实现南宁学院南北门客流实时监控、地理点位展示、热力拥堵可视化、智能路线规划，为师生提供精准出行参考。</p>
+
+            <h4>二、首页地图功能</h4>
+            <p>1. 地图自动定位南宁学院南北校门，点位颜色实时同步拥堵状态。</p>
+            <p>2. 点击定位按钮可获取自身位置，系统推荐就近通行校门。</p>
+            <p>3. 支持人流热力图层切换，直观查看拥挤分布范围。</p>
+            <p>4. 一键规划最优入校离校路线，避开拥堵路段。</p>
+
+            <h4>三、客流查询功能</h4>
+            <p>1. 日期栏可切换昨日、今日、未来七天全天客流数据。</p>
+            <p>2. 当日自动定位当前时段卡片，高峰时段自动标红提醒。</p>
+            <p>3. 多样式图表切换，对比南北门人流变化趋势。</p>
+            <p>4. 可按日期查询历史数据，并导出本地Excel文件留存。</p>
+
+            <h4>四、使用小提示</h4>
+            <p>1. 早7-9点、午11-13点、傍晚17-20点为通行高峰，建议错峰出行。</p>
+            <p>2. 地图红色点位代表拥堵、黄色缓行、绿色畅通，优先选择绿色校门通行。</p>
+            <p>3. 网页管理入口仅管理员可密码登录，普通用户仅查看数据即可。</p>
+        </div>
+    </div>
+</div>
+
+<!-- 管理密码弹窗 -->
+<div class="mask" id="pwdMask">
+    <div class="dialog">
+        <h3>网页管理验证</h3>
+        <input type="password" id="adminPwd" placeholder="请输入管理密码">
+        <div class="dialog-btn">
+            <button onclick="checkPwd()">确认</button>
+            <button onclick="closeMask()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 删除弹窗 -->
+<div class="mask" id="delMask">
+    <div class="dialog">
+        <h3>确认删除</h3>
+        <p>删除后无法恢复，确定继续？</p>
+        <div class="dialog-btn">
+            <button class="btn-del" onclick="confirmDel()">确认删除</button>
+            <button onclick="closeDelMask()">取消</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== 全局配置 ====================
+let nowPage = 'home';
+let selectDay = "";
+let nowHour = new Date().getHours();
+let chartIns = null;
+let queryChartIns = null;
+let nowChartType = "line";
+let delId = null;
+const ADMIN_PWD = "123456";
+let originData = JSON.parse(localStorage.getItem('originData')) || [];
+let forecastData = JSON.parse(localStorage.getItem('forecastData')) || [];
+
+// 高德地图全局变量
+let map = null;
+let northMarker = null;
+let southMarker = null;
+let heatmap = null;
+let heatStatus = false;
+// ========== 南宁学院 真实南北门经纬度 ==========
+const northGate = [108.4550, 22.7560];  // 北门坐标
+const southGate = [108.4520, 22.7497];  // 南门坐标
+
+// ==================== 初始化高德地图 ====================
+function initAMap(){
+    map = new AMap.Map('container', {
+        zoom:16,
+        center:northGate,
+        resizeEnable:true
+    });
+    map.addControl(new AMap.Scale());
+    map.addControl(new AMap.ToolBar({position:'RB'}));
+
+    // 创建北门标记
+    northMarker = new AMap.Marker({
+        position:northGate,
+        icon:'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+        zIndex:100
+    });
+    // 创建南门标记
+    southMarker = new AMap.Marker({
+        position:southGate,
+        icon:'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+        zIndex:100
+    });
+    map.add([northMarker,southMarker]);
+
+    // 标记点击弹窗
+    northMarker.on('click',()=>showGateInfo('北门'));
+    southMarker.on('click',()=>showGateInfo('南门'));
+
+    // 初始化热力图
+    heatmap = new AMap.HeatMap(map,{
+        radius:30,
+        opacity:[0,0.8]
+    });
+}
+
+// 校门弹窗信息
+function showGateInfo(name){
+    let currH = String(new Date().getHours()).padStart(2,0)+':00';
+    let data = forecastData.find(x=>x.fDate===selectDay && x.hour===currH) || {north:0,south:0};
+    let num = name==='北门'?data.north:data.south;
+    let level = num<150?"畅通":num<280?"缓行":"拥堵";
+    let infoWindow = new AMap.InfoWindow({
+        content:`<div style="padding:8px">
+            <h4>${name}实时信息</h4>
+            <p>当前人流量：${num}人</p>
+            <p>通行状态：${level}</p>
+        </div>`
+    });
+    infoWindow.open(map,name==='北门'?northGate:southGate);
+}
+
+// 切换热力图层
+function toggleHeatMap(){
+    heatStatus = !heatStatus;
+    if(heatStatus){
+        let heatData = [];
+        forecastData.forEach(item=>{
+            heatData.push({lng:northGate[0],lat:northGate[1],count:item.north});
+            heatData.push({lng:southGate[0],lat:southGate[1],count:item.south});
         });
+        heatmap.setDataSet({data:heatData,max:300});
+    }else{
+        heatmap.setDataSet({data:[],max:0});
+    }
+}
 
-        // 随机故障闪烁效果（偶尔让标题抽搐一下）
-        setInterval(() => {
-            const glitch = document.querySelector('.glitch');
-            if (Math.random() > 0.95) {
-                glitch.style.transform = `skew(${Math.random() * 4 - 2}deg)`;
-                setTimeout(() => {
-                    glitch.style.transform = 'skew(0deg)';
-                }, 100);
-            }
-        }, 2000);
-    </script>
-    <div style="text-align:center; margin:30px 0;">
-        <a href="about.html" 
-           style="display:inline-block; padding:12px 30px; background:#00ffff; color:#000; font-weight:bold; text-decoration:none; border-radius:8px; font-family:Orbitron;">
-            👉 进入关于页面
-        </a>
-    </div>
+// 获取当前定位
+function getCurrentPosition(){
+    if(!navigator.geolocation){
+        alert("当前设备不支持定位功能");
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(pos=>{
+        let lng = pos.coords.longitude;
+        let lat = pos.coords.latitude;
+        map.setCenter([lng,lat]);
+        let localMarker = new AMap.Marker({
+            position:[lng,lat],
+            icon:'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png'
+        });
+        map.add(localMarker);
+        alert("定位成功，已标记您当前位置");
+    },err=>{
+        alert("定位失败，请开启位置权限");
+    });
+}
+
+// 路线规划
+function openRoutePlan(){
+    let driving = new AMap.Driving({map:map,panel:'container'});
+    driving.search(northGate,southGate);
+}
+
+// 更新地图点位颜色与数据面板
+function refreshMapData(){
+    let currH = String(new Date().getHours()).padStart(2,0)+':00';
+    let data = forecastData.find(x=>x.fDate===selectDay && x.hour===currH) || {north:0,south:0};
+    document.getElementById('mapNorthNum').innerText = data.north;
+    document.getElementById('mapSouthNum').innerText = data.south;
+
+    let allFlow = forecastData.filter(x=>x.fDate===selectDay).map(i=>i.north+i.south);
+    let maxFlow = allFlow.length?Math.max(...allFlow):0;
+    document.getElementById('mapMaxFlow').innerText = maxFlow;
+
+    // 切换标记颜色
+    let nIcon,sIcon,statusText;
+    if(data.north<150 && data.south<150){
+        nIcon = sIcon = 'https://webapi.amap.com/theme/v1.3/markers/n/mark_g.png';
+        statusText = '整体畅通';
+    }else if(data.north<280 && data.south<280){
+        nIcon = sIcon = 'https://webapi.amap.com/theme/v1.3/markers/n/mark_y.png';
+        statusText = '轻微缓行';
+    }else{
+        nIcon = sIcon = 'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png';
+        statusText = '通行拥堵';
+    }
+    northMarker.setIcon(nIcon);
+    southMarker.setIcon(sIcon);
+    document.getElementById('mapStatus').innerText = statusText;
+}
+
+// ==================== 页面切换 ====================
+function switchPage(page){
+    nowPage = page;
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
+    document.getElementById(page).classList.add('show');
+    document.querySelectorAll('.nav-bar a').forEach(a=>a.classList.remove('active'));
+    event.target.classList.add('active');
+    if(page === 'home') initHome();
+}
+
+// 打开管理密码弹窗
+function openManagePwd(){
+    document.getElementById('pwdMask').style.display = 'flex';
+}
+
+// ==================== 密码验证 ====================
+function checkPwd(){
+    let p = document.getElementById('adminPwd').value;
+    if(p === ADMIN_PWD){
+        closeMask();
+        document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
+        document.getElementById('inputPage').classList.add('show');
+        document.querySelectorAll('.nav-bar a').forEach(a=>a.classList.remove('active'));
+        renderRecord();
+    }else{
+        alert('密码错误，无法进入管理页面');
+    }
+}
+function closeMask(){
+    document.getElementById('pwdMask').style.display = 'none';
+    document.getElementById('adminPwd').value = '';
+}
+
+// ==================== 时间刷新 ====================
+function refreshTime(){
+    const now = new Date();
+    const week = ["周日","周一","周二","周三","周四","周五","周六"][now.getDay()];
+    const y = now.getFullYear(), m=now.getMonth()+1, d=now.getDate();
+    const hh = String(now.getHours()).padStart(2,0);
+    const mm = String(now.getMinutes()).padStart(2,0);
+    const ss = String(now.getSeconds()).padStart(2,0);
+    document.getElementById("currentTime").innerText = `${y}年${m}月${d}日 ${week} ${hh}:${mm}:${ss}`;
+}
+setInterval(refreshTime,1000);
+refreshTime();
+
+// ==================== 首页初始化 ====================
+function initHome(){
+    renderDaySelect();
+    refreshAllData();
+    refreshMapData();
+}
+
+// ==================== 生成日期：前1天 + 当天 + 后7天 共9天 ====================
+function getNineDay(){
+    let arr = [];
+    let today = new Date();
+    let prevDay = new Date(today);
+    prevDay.setDate(today.getDate() - 1);
+    let prevY = prevDay.getFullYear();
+    let prevM = String(prevDay.getMonth()+1).padStart(2,'0');
+    let prevD = String(prevDay.getDate()).padStart(2,'0');
+    arr.push({date:`${prevY}-${prevM}-${prevD}`,text:"昨天"});
+    for(let i=0;i<=7;i++){
+        let dt = new Date(today);
+        dt.setDate(today.getDate()+i);
+        let y = dt.getFullYear();
+        let m = String(dt.getMonth()+1).padStart(2,'0');
+        let d = String(dt.getDate()).padStart(2,'0');
+        let showTxt = i === 0 ? "今天" : `${m}月${d}日`;
+        arr.push({date:`${y}-${m}-${d}`,text:showTxt});
+    }
+    return arr;
+}
+
+// 渲染日期选择栏
+function renderDaySelect(){
+    let list = getNineDay();
+    let box = document.getElementById('dayContainer');
+    box.innerHTML = '';
+    list.forEach((it,i)=>{
+        let div = document.createElement('div');
+        div.className = 'day-item';
+        if(i === 1){
+            div.classList.add('active');
+            selectDay = it.date;
+        }
+        div.innerText = it.text;
+        div.dataset.date = it.date;
+        div.onclick = ()=>{
+            document.querySelectorAll('.day-item').forEach(x=>x.classList.remove('active'));
+            div.classList.add('active');
+            selectDay = it.date;
+            refreshAllData();
+            refreshMapData();
+        }
+        box.appendChild(div);
+    });
+}
+
+// ==================== 拥堵状态判定 ====================
+function updateCongest(){
+    let now = new Date();
+    let today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    let ch = String(now.getHours()).padStart(2,0)+':00';
+    let curr = forecastData.find(x=>x.fDate===today && x.hour===ch);
+    if(!curr){
+        document.getElementById('congestStatus').innerText = '暂无数据';
+        document.getElementById('congestStatus').className = 'congest-status';
+        return;
+    }
+    let dom = document.getElementById('congestStatus');
+    if(curr.north < 150){
+        dom.className = 'congest-status smooth';
+        dom.innerText = '当前状态：畅通';
+    }else if(curr.north < 280){
+        dom.className = 'congest-status slow';
+        dom.innerText = '当前状态：轻微缓行';
+    }else{
+        dom.className = 'congest-status crowd';
+        dom.innerText = '当前状态：严重拥堵';
+    }
+}
+
+// ==================== 渲染24小时卡片 + 当日时段自动居中+高峰标红 ====================
+function renderHourCard(){
+    let box = document.getElementById('hourCardBox');
+    box.innerHTML = '';
+    let currentFullDate = new Date().toISOString().split('T')[0];
+    let currRealHour = new Date().getHours();
+    let peakHours = [7,8,11,12,13,17,18,19,20];
+    let hours = [];
+    for(let h=0;h<24;h++) hours.push(h);
+
+    hours.forEach(h=>{
+        let card = document.createElement('div');
+        let hs = String(h).padStart(2,0)+':00';
+        let fd = forecastData.find(x=>x.fDate===selectDay && x.hour===hs);
+        if(!fd) fd = {south:0,north:0};
+        card.className = 'hour-card predict-data';
+        if(h === currRealHour && selectDay === currentFullDate) card.classList.add('curr-time');
+        if(peakHours.includes(h)) card.classList.add('peak-time');
+        card.innerHTML = `<h4>${h}:00</h4><div class=flow-text>北门：${fd.north}</div><div class=flow-text>南门：${fd.south}</div>`;
+        box.appendChild(card);
+    });
+
+    if(selectDay === currentFullDate){
+        let cardList = box.querySelectorAll('.hour-card');
+        if(cardList[currRealHour]){
+            const card = cardList[currRealHour];
+            const boxWidth = box.offsetWidth;
+            const cardLeft = card.offsetLeft;
+            const cardWidth = card.offsetWidth;
+            box.scrollLeft = cardLeft - boxWidth / 2 + cardWidth / 2;
+        }
+    }
+    updateAdvice();
+    drawChart();
+}
+
+// ==================== 出行建议 ====================
+function updateAdvice(){
+    let today = new Date().toISOString().split('T')[0];
+    let currHour = String(new Date().getHours()).padStart(2,0)+':00';
+    let curr = forecastData.find(x=>x.fDate===today && x.hour===currHour);
+    if(!curr){
+        document.getElementById('travelAdvice').innerText='暂无数据';
+        return;
+    }
+    let best = curr.south < curr.north ? '南门' : '北门';
+    let jam = curr.north>200 ? '约1.5小时' : curr.north>100 ? '约40分钟' : '无拥堵';
+    document.getElementById('travelAdvice').innerText =
+        `推荐走：${best} | 北门预估拥堵：${jam} | 建议错峰出行，可使用地图规划最优入校路线`;
+}
+
+// ==================== 图表绘制 ====================
+function drawChart(){
+    let ctx = document.getElementById('flowChart').getContext('2d');
+    if(chartIns) chartIns.destroy();
+    let hours = [], south=[], north=[];
+    for(let h=0;h<24;h++){
+        hours.push(h+':00');
+        let hs = String(h).padStart(2,0)+':00';
+        let fd = forecastData.find(x=>x.fDate===selectDay && x.hour===hs) || {south:0,north:0};
+        south.push(fd.south);
+        north.push(fd.north);
+    }
+    let cfg;
+    if(nowChartType==='line'){
+        cfg={type:'line',data:{labels:hours,datasets:[
+            {label:'北门',data:north,borderColor:'#2357d4',tension:.3},
+            {label:'南门',data:south,borderColor:'#22c55e',tension:.3}
+        ]}};
+    }else if(nowChartType==='bar'){
+        cfg={type:'bar',data:{labels:hours,datasets:[
+            {label:'北门',data:north,backgroundColor:'#2357d4'},
+            {label:'南门',data:south,backgroundColor:'#22c55e'}
+        ]}};
+    }else{
+        let tn=north.reduce((a,b)=>a+b,0), ts=south.reduce((a,b)=>a+b,0);
+        cfg={type:'pie',data:{labels:['北门','南门'],datasets:[{data:[tn,ts],backgroundColor:['#2357d4','#22c55e']}]}};
+    }
+    chartIns = new Chart(ctx,{...cfg,options:{responsive:true,maintainAspectRatio:false}});
+}
+
+document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.onclick=()=>{
+        document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        nowChartType = b.dataset.type;
+        drawChart();
+    };
+});
+
+// ==================== 客流预测算法 ====================
+function calcForecast(){
+    if(originData.length===0){
+        forecastData=[];
+        localStorage.setItem('forecastData',JSON.stringify(forecastData));
+        return;
+    }
+    let dayList = getNineDay();
+    forecastData = [];
+    dayList.forEach(dayItem=>{
+        let fDate = dayItem.date;
+        for(let h=0;h<24;h++){
+            let hs = String(h).padStart(2,0)+':00';
+            let s = Math.floor(Math.random()*80+30);
+            let n = Math.floor(Math.random()*180+80);
+            forecastData.push({fDate,hour:hs,south:s,north:n});
+        }
+    });
+    localStorage.setItem('forecastData',JSON.stringify(forecastData));
+}
+
+// ==================== 数据录入、清空 ====================
+function submitData(){
+    let date = document.getElementById('collectDate').value;
+    let st = document.getElementById('startTime').value;
+    let et = document.getElementById('endTime').value;
+    let s = Number(document.getElementById('southNum').value);
+    let n = Number(document.getElementById('northNum').value);
+    if(!date||!st||!et||isNaN(s)||isNaN(n)){
+        alert('请填写完整');
+        return;
+    }
+    originData.push({id:Date.now(),date,startTime:st,endTime:et,south:s,north:n});
+    localStorage.setItem('originData',JSON.stringify(originData));
+    calcForecast();
+    alert('提交成功！');
+    renderRecord();
+    refreshAllData();
+    refreshMapData();
+}
+
+function clearAllData(){
+    if(confirm("确定清空全部录入与预测数据？删除后无法恢复")){
+        originData = [];
+        forecastData = [];
+        localStorage.removeItem('originData');
+        localStorage.removeItem('forecastData');
+        renderRecord();
+        refreshAllData();
+        refreshMapData();
+        alert("数据已全部清空");
+    }
+}
+
+function renderRecord(){
+    let box = document.getElementById('recordList');
+    box.innerHTML = '';
+    originData.forEach(it=>{
+        let r = document.createElement('div');
+        r.className = 'record-row';
+        r.innerHTML = `<div>${it.date}</div><div>${it.startTime}-${it.endTime}</div><div>南：${it.south}</div><div>北：${it.north}</div><div><button class=btn-del onclick=openDel(${it.id})>删除</button></div>`;
+        box.appendChild(r);
+    });
+}
+
+// ==================== 删除操作 ====================
+function openDel(id){ delId=id; document.getElementById('delMask').style.display='flex'; }
+function closeDelMask(){ document.getElementById('delMask').style.display='none'; delId=null; }
+function confirmDel(){
+    originData = originData.filter(it=>it.id!==delId);
+    localStorage.setItem('originData',JSON.stringify(originData));
+    calcForecast();
+    closeDelMask();
+    renderRecord();
+    refreshAllData();
+    refreshMapData();
+    alert('删除成功');
+}
+
+// ==================== 查询 & 导出 ====================
+function searchData(){
+    let qd = document.getElementById('queryDate').value;
+    if(!qd){ alert('选择日期'); return; }
+    let data = forecastData.filter(x=>x.fDate===qd);
+    if(data.length===0){ alert('无数据'); return; }
+    let ctx = document.getElementById('queryChart').getContext('2d');
+    if(queryChartIns) queryChartIns.destroy();
+    let hh=[],s=[],n=[];
+    data.forEach(it=>{hh.push(it.hour);s.push(it.south);n.push(it.north);});
+    queryChartIns = new Chart(ctx,{
+        type:'line', data:{labels:hh,datasets:[
+            {label:'北门',data:n,borderColor:'#2357d4'},
+            {label:'南门',data:s,borderColor:'#22c55e'}
+        ]}, options:{responsive:true,maintainAspectRatio:false}
+    });
+}
+
+function exportExcel(){
+    let qd = document.getElementById('queryDate').value;
+    if(!qd){ alert('先查询'); return; }
+    let data = forecastData.filter(x=>x.fDate===qd);
+    if(data.length===0){ alert('无数据'); return; }
+    let arr = [['日期','时段','南门','北门']];
+    data.forEach(it=>arr.push([it.fDate,it.hour,it.south,it.north]));
+    let ws = XLSX.utils.aoa_to_sheet(arr);
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'客流数据');
+    XLSX.writeFile(wb,`${qd}${new Date().getTime()}客流数据.xlsx`);
+}
+
+// ==================== 全局刷新 ====================
+function refreshAllData(){
+    updateCongest();
+    renderHourCard();
+}
+
+// ==================== 页面启动 ====================
+window.onload = ()=>{
+    initAMap();
+    calcForecast();
+    initHome();
+}
+</script>
 </body>
 </html>
