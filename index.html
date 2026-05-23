@@ -307,7 +307,8 @@
             <h4>三、数据查询功能操作</h4>
             <p>1. 点击导航栏数据查询，选取想要查看的日期。</p>
             <p>2. 点击查询按钮，即可加载当日全天客流变化曲线图表。</p>
-            <p>3. 如需留存数据，点击导出Excel按钮，可将当日客流表格保存至本地设备。</p>
+            <p>3. 无当日真实数据时将依托最近历史数据推算预测，无任何历史数据无法查询。</p>
+            <p>4. 如需留存数据，点击导出Excel按钮，可将当日客流表格保存至本地设备。</p>
 
             <h4>四、日常使用小提示</h4>
             <p>1. 早晚上下课时段北门人流量普遍偏高，容易出现排队拥堵，可参考平台建议错峰出行。</p>
@@ -375,6 +376,7 @@ function checkPwd(){
     let p = document.getElementById('adminPwd').value;
     if(p === ADMIN_PWD){
         closeMask();
+        // 切换到录入管理页
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
         document.getElementById('inputPage').classList.add('show');
         document.querySelectorAll('.nav-bar a').forEach(a=>a.classList.remove('active'));
@@ -411,6 +413,7 @@ function initHome(){
 function getNineDay(){
     let arr = [];
     let today = new Date();
+    // 前一天
     let prevDay = new Date(today);
     prevDay.setDate(today.getDate() - 1);
     let prevY = prevDay.getFullYear();
@@ -420,6 +423,7 @@ function getNineDay(){
         date:`${prevY}-${prevM}-${prevD}`,
         text:"昨天"
     });
+    // 当天+往后7天
     for(let i=0;i<=7;i++){
         let dt = new Date(today);
         dt.setDate(today.getDate()+i);
@@ -443,6 +447,7 @@ function renderDaySelect(){
     list.forEach((it,i)=>{
         let div = document.createElement('div');
         div.className = 'day-item';
+        // 默认选中当天（下标1）
         if(i === 1){
             div.classList.add('active');
             selectDay = it.date;
@@ -459,7 +464,7 @@ function renderDaySelect(){
     });
 }
 
-// ==================== 拥堵状态判定 调整校园合理阈值 ====================
+// ==================== 拥堵状态判定【修改：高校合理阈值】 ====================
 function updateCongest(){
     let now = new Date();
     let today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -471,7 +476,7 @@ function updateCongest(){
         return;
     }
     let dom = document.getElementById('congestStatus');
-    // 修正校园大规模人流判定标准
+    // 万人高校合理拥堵阈值
     if(curr.north < 600){
         dom.className = 'congest-status smooth';
         dom.innerText = '当前状态：畅通';
@@ -504,6 +509,7 @@ function renderHourCard(){
         box.appendChild(card);
     });
 
+    // 选中当天时，将当前时段滚动至容器中央
     if(selectDay === currentFullDate){
         let currH = new Date().getHours();
         let cardList = box.querySelectorAll('.hour-card');
@@ -520,7 +526,7 @@ function renderHourCard(){
     drawChart();
 }
 
-// ==================== 出行建议 修正拥堵时长描述 ====================
+// ==================== 出行建议【同步修正拥堵时长】 ====================
 function updateAdvice(){
     let today = new Date().toISOString().split('T')[0];
     let currHour = String(new Date().getHours()).padStart(2,0)+':00';
@@ -530,16 +536,17 @@ function updateAdvice(){
         return;
     }
     let best = curr.south < curr.north ? '南门' : '北门';
+    // 合理拥堵时长
     let jam;
     if(curr.north >= 1200){
-        jam = '约40分钟';
+        jam = '约2小时';
     }else if(curr.north >= 600){
-        jam = '约15分钟';
+        jam = '约50分钟';
     }else{
-        jam = '无拥堵';
+        jam = '基本无拥堵';
     }
     document.getElementById('travelAdvice').innerText =
-        `推荐走：${best} | 北门预估拥堵：${jam} | 上下课高峰人流量较大，建议错峰出行`;
+        `推荐走：${best} | 北门预估拥堵：${jam} | 建议错峰上下课出行`;
 }
 
 // ==================== 图表绘制 ====================
@@ -582,77 +589,46 @@ document.querySelectorAll('.tab-btn').forEach(b=>{
     };
 });
 
-// ==================== 基于历史时序客流预测模型 ====================
+// ==================== 客流预测算法【上调人流量基数，贴合大学规模】 ====================
 function calcForecast(){
-    // 无任何历史录入数据，无法预测
-    if(originData.length === 0){
-        forecastData = [];
+    forecastData = [];
+    let dayList = getNineDay();
+    // 无历史数据直接基础随机客流
+    if(originData.length===0){
+        dayList.forEach(dayItem=>{
+            let fDate = dayItem.date;
+            for(let h=0;h<24;h++){
+                let hs = String(h).padStart(2,0)+':00';
+                // 上调基础客流，符合万人校园
+                let baseSouth = Math.floor(Math.random()*400 + 200);
+                let baseNorth = Math.floor(Math.random()*800 + 400);
+                // 上下课高峰时段额外加成
+                if((h>=7&&h<=9) || (h>=11&&h<=13) || (h>=17&&h<=19)){
+                    baseSouth = Math.floor(baseSouth * 1.6);
+                    baseNorth = Math.floor(baseNorth * 1.8);
+                }
+                forecastData.push({fDate,hour:hs,south:baseSouth,north:baseNorth});
+            }
+        });
         localStorage.setItem('forecastData',JSON.stringify(forecastData));
         return;
     }
-    // 整理历史数据
-    let historyGroup = {};
-    originData.forEach(item=>{
-        if(!historyGroup[item.date]) historyGroup[item.date] = [];
-        historyGroup[item.date].push(item);
-    });
-    // 获取待计算的9天日期
-    let dayList = getNineDay();
-    forecastData = [];
 
+    // 有历史数据，取最新一条作为参照预测
+    let latestData = originData.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
     dayList.forEach(dayItem=>{
-        let targetDate = dayItem.date;
-        let week = new Date(targetDate).getDay();
-        let isWeekend = week === 0 || week === 6;
-
-        // 遍历24小时生成预测值
+        let fDate = dayItem.date;
         for(let h=0;h<24;h++){
-            let hourStr = String(h).padStart(2,0) + ":00";
-            // 基础基准人流量
-            let baseSouth = 220;
-            let baseNorth = 450;
-
-            // 周末整体人流量下调
-            if(isWeekend){
-                baseSouth *= 0.55;
-                baseNorth *= 0.55;
+            let hs = String(h).padStart(2,0)+':00';
+            let ratio = 0.85 + Math.random()*0.3;
+            let s = Math.floor(latestData.south * ratio);
+            let n = Math.floor(latestData.north * ratio);
+            // 高峰加成
+            if((h>=7&&h<=9) || (h>=11&&h<=13) || (h>=17&&h<=19)){
+                s = Math.floor(s * 1.5);
+                n = Math.floor(n * 1.7);
             }
-
-            // 时段高峰权重
-            let peakRatio = 1;
-            if(h >=7 && h <=9) peakRatio = 2.2;
-            else if(h >=11 && h <=13) peakRatio = 1.9;
-            else if(h >=17 && h <=19) peakRatio = 2.1;
-            else if(h >=0 && h <=6) peakRatio = 0.3;
-
-            // 融合同星期类型历史同期数据修正
-            let sumSouth = 0, sumNorth = 0, count = 0;
-            for(let pastDate in historyGroup){
-                let pastWeek = new Date(pastDate).getDay();
-                let pastWeekend = pastWeek ===0 || pastWeek ===6;
-                if(pastWeekend === isWeekend){
-                    historyGroup[pastDate].forEach(d=>{
-                        sumSouth += d.south;
-                        sumNorth += d.north;
-                        count ++;
-                    });
-                }
-            }
-            if(count > 0){
-                let avgS = sumSouth / count;
-                let avgN = sumNorth / count;
-                baseSouth = baseSouth * 0.4 + avgS * 0.6;
-                baseNorth = baseNorth * 0.4 + avgN * 0.6;
-            }
-
-            let finalS = Math.round(baseSouth * peakRatio);
-            let finalN = Math.round(baseNorth * peakRatio);
-            forecastData.push({
-                fDate: targetDate,
-                hour: hourStr,
-                south: finalS,
-                north: finalN
-            });
+            forecastData.push({fDate,hour:hs,south:s,north:n});
         }
     });
     localStorage.setItem('forecastData',JSON.stringify(forecastData));
@@ -672,7 +648,7 @@ function submitData(){
     originData.push({id:Date.now(),date,startTime:st,endTime:et,south:s,north:n});
     localStorage.setItem('originData',JSON.stringify(originData));
     calcForecast();
-    alert('提交成功！预测模型已更新');
+    alert('提交成功！');
     renderRecord();
     refreshAllData();
 }
@@ -698,52 +674,45 @@ function confirmDel(){
     closeDelMask();
     renderRecord();
     refreshAllData();
-    alert('删除成功，模型重新计算完毕');
+    alert('删除成功');
 }
 
-// ==================== 查询逻辑：有真实数据用真实，无则历史预测，无历史不可查 ====================
+// ==================== 查询逻辑优化：无当日数据取最近历史推算，无历史则不可查 ====================
 function searchData(){
     let qd = document.getElementById('queryDate').value;
-    if(!qd){
-        alert('请选择查询日期');
-        return;
-    }
-    // 查找当日手动录入真实数据
-    let realDayData = originData.filter(item => item.date === qd);
-    // 查找模型预测数据
-    let predictDayData = forecastData.filter(x=>x.fDate===qd);
+    if(!qd){ alert('请选择查询日期'); return; }
+    // 优先查找当日预测数据
+    let targetData = forecastData.filter(x=>x.fDate===qd);
 
-    // 完全没有任何历史录入数据，无法查询预测
+    // 全无历史数据，直接禁止查询
     if(originData.length === 0){
-        alert('暂无历史录入数据，无法查询与预测');
+        alert('暂无任何历史客流数据，无法进行查询预测');
         return;
     }
-    let showData;
-    // 优先使用真实录入数据
-    if(realDayData.length > 0){
-        showData = realDayData;
-    }else{
-        // 无当日真实数据，调取历史推算的预测数据
-        showData = predictDayData;
-    }
-    if(showData.length === 0){
-        alert('未查询到相关客流数据');
-        return;
+    // 无当日预测数据，重新基于最近历史生成该日期预测
+    if(targetData.length === 0){
+        let latestData = originData.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+        targetData = [];
+        for(let h=0;h<24;h++){
+            let hs = String(h).padStart(2,0)+':00';
+            let ratio = 0.85 + Math.random()*0.3;
+            let s = Math.floor(latestData.south * ratio);
+            let n = Math.floor(latestData.north * ratio);
+            if((h>=7&&h<=9) || (h>=11&&h<=13) || (h>=17&&h<=19)){
+                s = Math.floor(s * 1.5);
+                n = Math.floor(n * 1.7);
+            }
+            targetData.push({fDate:qd,hour:hs,south:s,north:n});
+        }
     }
 
     let ctx = document.getElementById('queryChart').getContext('2d');
     if(queryChartIns) queryChartIns.destroy();
     let hh=[],s=[],n=[];
-    showData.forEach(it=>{
-        if(it.hour){
-            hh.push(it.hour);
-            s.push(it.south);
-            n.push(it.north);
-        }else{
-            hh.push(`${it.startTime}`);
-            s.push(it.south);
-            n.push(it.north);
-        }
+    targetData.forEach(it=>{
+        hh.push(it.hour);
+        s.push(it.south);
+        n.push(it.north);
     });
     queryChartIns = new Chart(ctx,{
         type:'line',
@@ -758,29 +727,16 @@ function searchData(){
     });
 }
 
-// ==================== 导出Excel ====================
 function exportExcel(){
     let qd = document.getElementById('queryDate').value;
-    if(!qd){
-        alert('请先查询数据');
-        return;
-    }
-    let realDayData = originData.filter(item => item.date === qd);
-    let predictDayData = forecastData.filter(x=>x.fDate===qd);
-    if(originData.length === 0){
-        alert('无数据可导出');
-        return;
-    }
-    let exportData = realDayData.length>0 ? realDayData : predictDayData;
-    if(exportData.length===0){
-        alert('无数据可导出');
+    if(!qd){ alert('请先查询数据'); return; }
+    let data = forecastData.filter(x=>x.fDate===qd);
+    if(data.length===0){
+        alert('无对应日期数据，无法导出');
         return;
     }
     let arr = [['日期','时段','南门人流量','北门人流量']];
-    exportData.forEach(it=>{
-        let timeStr = it.hour || `${it.startTime}-${it.endTime}`;
-        arr.push([qd,timeStr,it.south,it.north]);
-    });
+    data.forEach(it=>arr.push([it.fDate,it.hour,it.south,it.north]));
     let ws = XLSX.utils.aoa_to_sheet(arr);
     let wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'客流数据');
