@@ -307,12 +307,12 @@
             <h4>三、数据查询功能操作</h4>
             <p>1. 点击导航栏数据查询，选取想要查看的日期。</p>
             <p>2. 点击查询按钮，即可加载当日全天客流变化曲线图表。</p>
-            <p>3. 无当日真实数据时将依托最近历史数据推算预测，无任何历史数据无法查询。</p>
+            <p>3. 录入真实数据后自动生成预测数据，首页、查询页数据实时同步。</p>
             <p>4. 如需留存数据，点击导出Excel按钮，可将当日客流表格保存至本地设备。</p>
 
             <h4>四、日常使用小提示</h4>
             <p>1. 早晚上下课时段北门人流量普遍偏高，容易出现排队拥堵，可参考平台建议错峰出行。</p>
-            <p>2. 平台预测数据仅供出行参考，实际通行情况会根据校园实时人员流动略有变动。</p>
+            <p>2. 平台预测数据依托真实录入数据生成，参考性更强。</p>
             <p>3. 普通用户仅可查看、查询与导出数据，无法修改平台内部客流信息。</p>
             <p>4. 滑动类卡片均可鼠标左右拖拽滑动，方便浏览全部时段信息。</p>
         </div>
@@ -353,7 +353,9 @@ let queryChartIns = null;
 let nowChartType = "line";
 let delId = null;
 const ADMIN_PWD = "123456";
+// 原始真实录入数据
 let originData = JSON.parse(localStorage.getItem('originData')) || [];
+// 统一全局预测数据，首页、查询共用此数据
 let forecastData = JSON.parse(localStorage.getItem('forecastData')) || [];
 
 // ==================== 页面切换 ====================
@@ -376,7 +378,6 @@ function checkPwd(){
     let p = document.getElementById('adminPwd').value;
     if(p === ADMIN_PWD){
         closeMask();
-        // 切换到录入管理页
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
         document.getElementById('inputPage').classList.add('show');
         document.querySelectorAll('.nav-bar a').forEach(a=>a.classList.remove('active'));
@@ -447,7 +448,6 @@ function renderDaySelect(){
     list.forEach((it,i)=>{
         let div = document.createElement('div');
         div.className = 'day-item';
-        // 默认选中当天（下标1）
         if(i === 1){
             div.classList.add('active');
             selectDay = it.date;
@@ -464,7 +464,7 @@ function renderDaySelect(){
     });
 }
 
-// ==================== 拥堵状态判定【修改：高校合理阈值】 ====================
+// ==================== 拥堵状态判定 高校合理阈值 ====================
 function updateCongest(){
     let now = new Date();
     let today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -476,7 +476,6 @@ function updateCongest(){
         return;
     }
     let dom = document.getElementById('congestStatus');
-    // 万人高校合理拥堵阈值
     if(curr.north < 600){
         dom.className = 'congest-status smooth';
         dom.innerText = '当前状态：畅通';
@@ -489,7 +488,7 @@ function updateCongest(){
     }
 }
 
-// ==================== 渲染24小时卡片 + 当日时段自动居中 ====================
+// ==================== 渲染24小时卡片 ====================
 function renderHourCard(){
     let box = document.getElementById('hourCardBox');
     box.innerHTML = '';
@@ -509,7 +508,7 @@ function renderHourCard(){
         box.appendChild(card);
     });
 
-    // 选中当天时，将当前时段滚动至容器中央
+    // 当前时段居中
     if(selectDay === currentFullDate){
         let currH = new Date().getHours();
         let cardList = box.querySelectorAll('.hour-card');
@@ -526,7 +525,7 @@ function renderHourCard(){
     drawChart();
 }
 
-// ==================== 出行建议【同步修正拥堵时长】 ====================
+// ==================== 出行建议 ====================
 function updateAdvice(){
     let today = new Date().toISOString().split('T')[0];
     let currHour = String(new Date().getHours()).padStart(2,0)+':00';
@@ -536,7 +535,6 @@ function updateAdvice(){
         return;
     }
     let best = curr.south < curr.north ? '南门' : '北门';
-    // 合理拥堵时长
     let jam;
     if(curr.north >= 1200){
         jam = '约2小时';
@@ -549,7 +547,7 @@ function updateAdvice(){
         `推荐走：${best} | 北门预估拥堵：${jam} | 建议错峰上下课出行`;
 }
 
-// ==================== 图表绘制 ====================
+// ==================== 首页图表绘制 ====================
 function drawChart(){
     let ctx = document.getElementById('flowChart').getContext('2d');
     if(chartIns) chartIns.destroy();
@@ -589,20 +587,20 @@ document.querySelectorAll('.tab-btn').forEach(b=>{
     };
 });
 
-// ==================== 客流预测算法【上调人流量基数，贴合大学规模】 ====================
+// ==================== 核心：根据真实录入数据统一生成预测数据 ====================
 function calcForecast(){
     forecastData = [];
-    let dayList = getNineDay();
-    // 无历史数据直接基础随机客流
-    if(originData.length===0){
+    const dayList = getNineDay();
+
+    // 无真实录入数据，生成基础校园客流
+    if(originData.length === 0){
         dayList.forEach(dayItem=>{
-            let fDate = dayItem.date;
+            const fDate = dayItem.date;
             for(let h=0;h<24;h++){
-                let hs = String(h).padStart(2,0)+':00';
-                // 上调基础客流，符合万人校园
+                const hs = String(h).padStart(2,0)+':00';
                 let baseSouth = Math.floor(Math.random()*400 + 200);
                 let baseNorth = Math.floor(Math.random()*800 + 400);
-                // 上下课高峰时段额外加成
+                // 上下课高峰加成
                 if((h>=7&&h<=9) || (h>=11&&h<=13) || (h>=17&&h<=19)){
                     baseSouth = Math.floor(baseSouth * 1.6);
                     baseNorth = Math.floor(baseNorth * 1.8);
@@ -610,31 +608,29 @@ function calcForecast(){
                 forecastData.push({fDate,hour:hs,south:baseSouth,north:baseNorth});
             }
         });
-        localStorage.setItem('forecastData',JSON.stringify(forecastData));
-        return;
-    }
-
-    // 有历史数据，取最新一条作为参照预测
-    let latestData = originData.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-    dayList.forEach(dayItem=>{
-        let fDate = dayItem.date;
-        for(let h=0;h<24;h++){
-            let hs = String(h).padStart(2,0)+':00';
-            let ratio = 0.85 + Math.random()*0.3;
-            let s = Math.floor(latestData.south * ratio);
-            let n = Math.floor(latestData.north * ratio);
-            // 高峰加成
-            if((h>=7&&h<=9) || (h>=11&&h<=13) || (h>=17&&h<=19)){
-                s = Math.floor(s * 1.5);
-                n = Math.floor(n * 1.7);
+    }else{
+        // 有真实数据，取最新一条作为基准推演所有日期预测数据
+        const latestData = originData.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+        dayList.forEach(dayItem=>{
+            const fDate = dayItem.date;
+            for(let h=0;h<24;h++){
+                const hs = String(h).padStart(2,0)+':00';
+                const ratio = 0.85 + Math.random()*0.3;
+                let s = Math.floor(latestData.south * ratio);
+                let n = Math.floor(latestData.north * ratio);
+                if((h>=7&&h<=9) || (h>=11&&h<=13) || (h>=17&&h<=19)){
+                    s = Math.floor(s * 1.5);
+                    n = Math.floor(n * 1.7);
+                }
+                forecastData.push({fDate,hour:hs,south:s,north:n});
             }
-            forecastData.push({fDate,hour:hs,south:s,north:n});
-        }
-    });
+        });
+    }
+    // 存入本地缓存，全局共用
     localStorage.setItem('forecastData',JSON.stringify(forecastData));
 }
 
-// ==================== 数据录入 ====================
+// ==================== 数据录入：提交后自动同步刷新首页、查询数据 ====================
 function submitData(){
     let date = document.getElementById('collectDate').value;
     let st = document.getElementById('startTime').value;
@@ -642,17 +638,22 @@ function submitData(){
     let s = Number(document.getElementById('southNum').value);
     let n = Number(document.getElementById('northNum').value);
     if(!date||!st||!et||isNaN(s)||isNaN(n)){
-        alert('请填写完整');
+        alert('请填写完整数据');
         return;
     }
+    // 保存真实原始数据
     originData.push({id:Date.now(),date,startTime:st,endTime:et,south:s,north:n});
     localStorage.setItem('originData',JSON.stringify(originData));
+
+    // 重新计算预测库，全局数据统一更新
     calcForecast();
-    alert('提交成功！');
+    alert('数据提交成功，首页与查询页面已同步更新！');
     renderRecord();
+    // 自动刷新首页展示
     refreshAllData();
 }
 
+// 渲染录入记录
 function renderRecord(){
     let box = document.getElementById('recordList');
     box.innerHTML = '';
@@ -664,33 +665,38 @@ function renderRecord(){
     });
 }
 
-// ==================== 删除操作 ====================
+// ==================== 删除数据，删除后同步刷新全局预测 ====================
 function openDel(id){ delId=id; document.getElementById('delMask').style.display='flex'; }
 function closeDelMask(){ document.getElementById('delMask').style.display='none'; delId=null; }
 function confirmDel(){
     originData = originData.filter(it=>it.id!==delId);
     localStorage.setItem('originData',JSON.stringify(originData));
+    // 删除后重新生成预测数据
     calcForecast();
     closeDelMask();
     renderRecord();
     refreshAllData();
-    alert('删除成功');
+    alert('数据删除成功，页面数据已同步刷新');
 }
 
-// ==================== 查询逻辑优化：无当日数据取最近历史推算，无历史则不可查 ====================
+// ==================== 数据查询：读取全局统一预测数据，和首页完全一致 ====================
 function searchData(){
     let qd = document.getElementById('queryDate').value;
-    if(!qd){ alert('请选择查询日期'); return; }
-    // 优先查找当日预测数据
-    let targetData = forecastData.filter(x=>x.fDate===qd);
-
-    // 全无历史数据，直接禁止查询
-    if(originData.length === 0){
-        alert('暂无任何历史客流数据，无法进行查询预测');
+    if(!qd){
+        alert('请选择查询日期');
         return;
     }
-    // 无当日预测数据，重新基于最近历史生成该日期预测
-    if(targetData.length === 0){
+    // 读取全局共用预测数据
+    let targetData = forecastData.filter(x=>x.fDate===qd);
+
+    // 无任何原始数据无法查询
+    if(originData.length === 0 && targetData.length === 0){
+        alert('暂无历史客流数据，无法查询');
+        return;
+    }
+
+    // 所选日期无预测数据，基于最新真实数据临时推演
+    if(targetData.length === 0 && originData.length > 0){
         let latestData = originData.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
         targetData = [];
         for(let h=0;h<24;h++){
@@ -727,9 +733,13 @@ function searchData(){
     });
 }
 
+// 导出Excel，使用全局统一数据
 function exportExcel(){
     let qd = document.getElementById('queryDate').value;
-    if(!qd){ alert('请先查询数据'); return; }
+    if(!qd){
+        alert('请先查询数据');
+        return;
+    }
     let data = forecastData.filter(x=>x.fDate===qd);
     if(data.length===0){
         alert('无对应日期数据，无法导出');
@@ -743,14 +753,15 @@ function exportExcel(){
     XLSX.writeFile(wb,`${qd}客流数据.xlsx`);
 }
 
-// ==================== 全局刷新 ====================
+// ==================== 全局页面数据刷新入口 ====================
 function refreshAllData(){
     updateCongest();
     renderHourCard();
 }
 
-// ==================== 页面启动 ====================
+// ==================== 页面初始化加载 ====================
 window.onload = ()=>{
+    // 启动就生成统一预测数据
     calcForecast();
     initHome();
 }
